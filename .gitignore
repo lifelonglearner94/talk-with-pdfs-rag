@@ -1,0 +1,84 @@
+# Environment variables
+.env
+
+# Vector database (generated)
+vectorstore/
+
+# Local data PDFs (keep directory but ignore actual papers)
+data/*.pdf
+data/*.PDF
+data/*.zip
+data/*.tar
+!data/.gitkeep
+
+# Python-generated files
+__pycache__/
+*.py[oc]
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+dist/
+wheels/
+*.egg-info
+.installed.cfg
+*.egg
+MANIFEST
+
+# Testing & coverage
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+coverage.xml
+
+# Type checking / analysis
+.mypy_cache/
+.ruff_cache/
+.pytype/
+dmypy.json
+pyrightconfig.json
+
+# Virtual environments
+.venv
+venv/
+ENV/
+env/
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*.code-workspace
+
+# Streamlit
+.streamlit/secrets.toml
+.streamlit/*.yaml
+
+# Notebooks
+.ipynb_checkpoints/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Zone Identifier files (Windows downloads)
+*:Zone.Identifier
+
+# Logs
+*.log
+
+*.txt
+
+# Caches & temp
+.cache/
+tmp/
+temp/
+*.tmp
+*.bak
+*.pid
+
+# Lock/installation artifacts (keep uv.lock tracked, so not ignored)
+# (Intentionally not ignoring uv.lock for reproducibility)

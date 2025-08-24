@@ -1,0 +1,16 @@
+[project]
+name = "talk-with-pdfs"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "langchain",
+    "langchain-community",
+    "langchain-google-genai",
+    "langchain-chroma",
+    "python-dotenv",
+    "pypdf",
+    "chromadb",
+    "streamlit"
+]

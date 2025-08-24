@@ -1,0 +1,56 @@
+# Daten-Ordner ausschließen (wird als Volume gemountet)
+data/
+
+# Cache und temporäre Dateien
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.so
+.tox
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.log
+.git
+.mypy_cache
+.pytest_cache
+.hypothesis
+
+# IDE und Editor-Dateien
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS-spezifische Dateien
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Environment und lokale Konfiguration
+.env
+.env.local
+.env.*.local
+
+# Lokale Vectorstore (wird zur Laufzeit erstellt)
+vectorstore/
+
+# Test-Dateien und Ergebnisse
+test_*
+*test_results*.txt
+
+# UV Lock-Datei ist bereits im Image
+# uv.lock - wird benötigt
+
+# README und Dokumentation (optional - können eingeschlossen werden)
+# README.md
