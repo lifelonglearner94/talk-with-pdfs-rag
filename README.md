@@ -1,4 +1,6 @@
-# 🔬 Scientific PDF Chat Assistant
+# 🔬 Scientific PDF Chat Assistant (talk-with-pdfs-rag)
+
+RAG system for chatting with scientific PDFs (Streamlit + LangChain + Chroma).
 
 Ein intelligenter Chat-Assistent zum Durchsuchen und Analysieren wissenschaftlicher PDF-Artikel mit **moderner Web-UI**, **persistenter Vektordatenbank** und **Quellenangaben**.
 
