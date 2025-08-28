@@ -1,4 +1,5 @@
-#!/bin/bash
+#!/usr/bin/env bash
+set -euo pipefail
 
 # Docker-Container für PDF-Chat starten
 # Verwendung: ./docker-start.sh <pfad-zu-pdf-ordner>
@@ -32,19 +33,25 @@ if [ -z "$(find "$PDF_DIR" -name "*.pdf" -type f)" ]; then
     fi
 fi
 
-echo "🚀 Starte PDF-Chat Container..."
-echo "📁 PDF-Ordner: $PDF_DIR"
-echo "🌐 App wird verfügbar sein unter: http://localhost:8501"
-echo ""
-echo "💡 Stellen Sie sicher, dass Sie die GOOGLE_API_KEY als Umgebungsvariable gesetzt haben!"
+IMAGE_NAME="talk-with-pdfs:latest"
+
+if ! docker image inspect "$IMAGE_NAME" >/dev/null 2>&1; then
+    echo "� Baue Docker Image '$IMAGE_NAME' (erstmalig)..."
+    docker build -t "$IMAGE_NAME" .
+fi
+
+echo "🚀 Starte Container..."
+echo "📁 PDFs:        $PDF_DIR"
+echo "🌐 UI:          http://localhost:8501"
+echo "🧪 Prompt v2:   (Standard) -> Override: export RAG_PROMPT_VERSION=v1"
 echo ""
 
-# Container starten mit PDF-Ordner als Volume
 docker run -it --rm \
     -p 8501:8501 \
     -v "$PDF_DIR:/app/data:ro" \
-    -e GOOGLE_API_KEY="$GOOGLE_API_KEY" \
+    -e GOOGLE_API_KEY="${GOOGLE_API_KEY:-}" \
+    -e RAG_PROMPT_VERSION="${RAG_PROMPT_VERSION:-v2}" \
     --name pdf-chat \
-    talk-with-pdfs
+    "$IMAGE_NAME"
 
 echo "📝 Container wurde beendet."

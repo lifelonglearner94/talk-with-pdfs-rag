@@ -1,5 +1,9 @@
-# Daten-Ordner ausschließen (wird als Volume gemountet)
-data/
+## Build Context Optimization
+# Exclude large or runtime-generated directories to speed up docker build context sending.
+
+# Daten-Ordner ausschließen (wird normalerweise als Volume gemountet)
+data/*
+!data/.gitkeep
 
 # Cache und temporäre Dateien
 __pycache__/
@@ -42,15 +46,20 @@ Thumbs.db
 .env.local
 .env.*.local
 
-# Lokale Vectorstore (wird zur Laufzeit erstellt)
-vectorstore/
+# Persistenter Vectorstore (wird zur Laufzeit erstellt / kann groß werden)
+vectorstore/*
+!vectorstore/.gitkeep
 
-# Test-Dateien und Ergebnisse
-test_*
+# Test Artefakte / Caches (Tests selbst dürfen ins Image für CI)
+# (Tests bleiben erhalten, nur Caches/Reports werden gefiltert)
+*.pytest_cache/
 *test_results*.txt
 
 # UV Lock-Datei ist bereits im Image
 # uv.lock - wird benötigt
 
-# README und Dokumentation (optional - können eingeschlossen werden)
-# README.md
+# Eggs / dist metadata
+*.egg-info/
+.eggs/
+dist/
+build/

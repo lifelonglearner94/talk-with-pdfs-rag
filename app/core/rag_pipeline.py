@@ -9,6 +9,7 @@ from .vectorstore import VectorStoreManager
 from .generator import AnswerGenerator
 from .models import AnswerResult, ChunkMetadata, RetrievalResult
 from .retriever import RetrieverFactory
+from .retrieval_utils import build_search_kwargs
 from .citations import derive_citation_key
 from .logging import logger, timed
 
@@ -38,14 +39,21 @@ class RAGPipeline:
         return enhanced
 
     @timed("ensure_index")
-    def ensure_index(self):
-        logger.info("pipeline.ensure_index start data_dir=%s", self.config.data_dir)
+    def ensure_index(self, force: bool = False):
+        """Ensure an index is available.
+
+        Parameters
+        ----------
+        force : bool
+            If True, always rebuild the index even if hash unchanged.
+        """
+        logger.info("pipeline.ensure_index start data_dir=%s force=%s", self.config.data_dir, force)
         raw_docs = self.ingestor.ingest()
         chunks = self.splitter.split(raw_docs)
         chunks = self._enhance_metadata(chunks)
         # Decide rebuild
-        if self.vs_manager.needs_rebuild(raw_docs, self.config):
-            logger.info("index.rebuild triggered")
+        if force or self.vs_manager.needs_rebuild(raw_docs, self.config):
+            logger.info("index.rebuild %s", "forced" if force else "triggered")
             self.vs_manager.build(chunks, self.config)
         else:
             logger.info("index.load existing")
@@ -79,3 +87,27 @@ class RAGPipeline:
                 seen.add(md.source_name)
         logger.info("pipeline.answer done sources=%d chunks=%d", len(sources_meta), len(retrieval_results))
         return AnswerResult(answer=answer_text, sources=sources_meta, raw_chunks=retrieval_results)
+
+    def update_settings(self, **kwargs):
+        """Update retrieval-related settings and rebuild the retriever in-place.
+
+        Only affects in-memory retriever (does not trigger re-index). Safe for UI use.
+        """
+        mutable_fields = {
+            "top_k",
+            "retrieval_strategy",
+            "mmr_lambda_mult",
+            "mmr_fetch_k_factor",
+            "mmr_min_fetch_k",
+        }
+        changed = False
+        for k, v in kwargs.items():
+            if k in mutable_fields and getattr(self.config, k) != v:
+                setattr(self.config, k, v)
+                changed = True
+        if changed and self.vs_manager.vectorstore:
+            if not self._retriever_factory:
+                self._retriever_factory = RetrieverFactory(self.vs_manager.vectorstore)
+            self._retriever = self._retriever_factory.build(self.config)
+            logger.debug("pipeline.update_settings applied=%s new_kwargs=%s", changed, build_search_kwargs(self.config))
+        return changed

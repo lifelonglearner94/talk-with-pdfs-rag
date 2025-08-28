@@ -5,6 +5,8 @@ from langchain_chroma import Chroma
 from langchain_core.documents import Document
 from .hashing import compute_index_hash, load_stored_hash, store_hash
 from .config import RAGConfig
+from .retrieval_utils import build_search_kwargs
+from .logging import logger
 import shutil
 import json
 
@@ -20,6 +22,7 @@ class VectorStoreManager:
         pdf_paths = [p for p in pdf_paths if p and p.exists()]
         new_hash = compute_index_hash(pdf_paths, config)
         stored = load_stored_hash(self.persist_dir)
+        logger.debug("index.hash stored=%s new=%s changed=%s", stored, new_hash, stored != new_hash)
         return stored != new_hash
 
     def build(self, chunks: List[Document], config: RAGConfig):
@@ -42,14 +45,11 @@ class VectorStoreManager:
     def as_retriever(self, config: RAGConfig):
         if not self.vectorstore:
             raise ValueError("Vectorstore not initialized")
-        if config.retrieval_strategy == "mmr":
-            fetch_k = max(config.top_k * config.mmr_fetch_k_factor, config.mmr_min_fetch_k)
-            search_kwargs = {"k": config.top_k, "fetch_k": fetch_k, "lambda_mult": config.mmr_lambda_mult}
-        else:
-            search_kwargs = {"k": config.top_k}
+        search_kwargs = build_search_kwargs(config)
+        logger.debug("retriever.build strategy=%s kwargs=%s", config.retrieval_strategy, search_kwargs)
         return self.vectorstore.as_retriever(
             search_type=config.retrieval_strategy,
-            search_kwargs=search_kwargs
+            search_kwargs=search_kwargs,
         )
 
     # Convenience helpers for UI

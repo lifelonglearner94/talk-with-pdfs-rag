@@ -16,6 +16,8 @@ class PDFIngestor:
             raise FileNotFoundError("No PDF files found in data directory")
         loader = PyPDFDirectoryLoader(str(self.data_dir))
         docs = loader.load()
+        # Filter any Zone.Identifier artifacts in case loader still ingested them
+        docs = [d for d in docs if ':Zone.Identifier' not in Path(d.metadata.get('source','')).name]
         if not docs:
             raise ValueError("No documents were loaded from PDFs")
         return docs

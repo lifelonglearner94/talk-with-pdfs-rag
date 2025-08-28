@@ -1,23 +1,11 @@
 #!/usr/bin/env python
-"""Run a small matrix (max 7) of RAG setting variations and persist detailed results.
+"""Matrix runner for a limited set (<=7) of RAG configuration variants.
 
-Each experiment variant will:
-  * Build (or rebuild) its own dedicated vectorstore (separate persist dir)
-  * Run retrieval (and optionally LLM answer) for a fixed evaluation question
-  * Persist a rich JSON result plus a concise Markdown summary
-
-Environment:
-  * Set your Google / relevant API key(s) as required by langchain_google_genai before running.
-  * To skip LLM calls (for faster / offline retrieval-only evaluation) set NO_LLM=1.
-
-Usage:
-  uv run python run_rag_experiments.py
+Moved from former `run_rag_experiments.py.backup` and lightly renamed.
 """
 from __future__ import annotations
 
-import json
-import os
-import time
+import json, os, time
 from dataclasses import asdict
 from datetime import datetime
 from pathlib import Path
@@ -26,70 +14,14 @@ from typing import List, Dict, Any
 from app.core.config import RAGConfig
 from app.core.rag_pipeline import RAGPipeline
 
-
-# ----------------------------------------------------------------------------
-# Configuration of experiment variants (<= 7)
-# Adjust or extend carefully; keep total <= 7 as requested.
-# ----------------------------------------------------------------------------
 EXPERIMENT_VARIANTS: List[Dict[str, Any]] = [
-    # id will be assigned automatically by order
-    {
-        "label": "sim_small_chunks_k5",
-        "retrieval_strategy": "similarity",
-        "chunk_size": 800,
-        "chunk_overlap": 120,
-        "top_k": 5,
-    },
-    {
-        "label": "sim_default_baseline",
-        "retrieval_strategy": "similarity",
-        "chunk_size": 1500,
-        "chunk_overlap": 200,
-        "top_k": 10,
-    },
-    {
-        "label": "mmr_small_lambda0.3",
-        "retrieval_strategy": "mmr",
-        "chunk_size": 800,
-        "chunk_overlap": 120,
-        "top_k": 8,
-        "mmr_lambda_mult": 0.3,
-    },
-    {
-        "label": "mmr_medium_lambda0.7",
-        "retrieval_strategy": "mmr",
-        "chunk_size": 1500,
-        "chunk_overlap": 200,
-        "top_k": 10,
-        "mmr_lambda_mult": 0.7,
-    },
-    {
-        "label": "mmr_large_chunks",
-        "retrieval_strategy": "mmr",
-        "chunk_size": 2000,
-        "chunk_overlap": 250,
-        "top_k": 6,
-        "mmr_lambda_mult": 0.5,
-    },
-    {
-        "label": "sim_many_k15",
-        "retrieval_strategy": "similarity",
-        "chunk_size": 1000,
-        "chunk_overlap": 150,
-        "top_k": 15,
-    },
-    {
-        "label": "mmr_balanced_k12",
-        "retrieval_strategy": "mmr",
-        "chunk_size": 1200,
-        "chunk_overlap": 180,
-        "top_k": 12,
-        "mmr_lambda_mult": 0.5,
-    },
+    {"label": "sim_small_chunks_k5", "retrieval_strategy": "similarity", "chunk_size": 800, "chunk_overlap": 120, "top_k": 5},
+    {"label": "sim_default_baseline", "retrieval_strategy": "similarity", "chunk_size": 1500, "chunk_overlap": 200, "top_k": 10},
+    {"label": "mmr_small_lambda0.3", "retrieval_strategy": "mmr", "chunk_size": 800, "chunk_overlap": 120, "top_k": 8, "mmr_lambda_mult": 0.3},
+    {"label": "mmr_medium_lambda0.7", "retrieval_strategy": "mmr", "chunk_size": 1500, "chunk_overlap": 200, "top_k": 10, "mmr_lambda_mult": 0.7},
+    {"label": "mmr_large_chunks", "retrieval_strategy": "mmr", "chunk_size": 2000, "chunk_overlap": 250, "top_k": 6, "mmr_lambda_mult": 0.5},
 ]
 
-
-# Single evaluation question (German, focusing on Kubernetes cluster management benefits)
 EVAL_QUESTION = (
     "Welche Vorteile bietet ein Kubernetes Cluster-Management gegenüber einer manuellen Orchestrierung von Containern, "
     "insbesondere im Hinblick auf Skalierung, Ausfallsicherheit, Scheduling und betrieblichen Aufwand?"
@@ -97,7 +29,6 @@ EVAL_QUESTION = (
 
 
 def build_config(base: RAGConfig, variant: Dict[str, Any], persist_root: Path, idx: int) -> RAGConfig:
-    """Return a new RAGConfig merged with variant overrides and dedicated persist dir."""
     kwargs = base.model_dump()
     kwargs.update(variant)
     kwargs["persist_dir"] = persist_root / f"exp_{idx:02d}_{variant['label']}"
@@ -110,19 +41,13 @@ def ensure_dir(p: Path):
 
 
 def serialize_answer_result(answer_result) -> Dict[str, Any]:
-    """Convert AnswerResult dataclass (and nested) into JSON-serializable structure."""
     if answer_result is None:
         return {}
     return {
         "answer": answer_result.answer,
         "sources": [asdict(s) for s in answer_result.sources],
         "raw_chunks": [
-            {
-                "order": i,
-                "text": r.text,
-                "metadata": asdict(r.metadata),
-                "char_len": len(r.text),
-            }
+            {"order": i, "text": r.text, "metadata": asdict(r.metadata), "char_len": len(r.text)}
             for i, r in enumerate(answer_result.raw_chunks)
         ],
     }
@@ -137,31 +62,23 @@ def main():
     for d in (persist_root, results_dir, summaries_dir):
         ensure_dir(d)
 
-    base_config = RAGConfig.from_env()  # start from env defaults
+    base_config = RAGConfig.from_env()
     no_llm = os.getenv("NO_LLM") == "1"
-
     aggregate_summary = []
 
     for idx, variant in enumerate(EXPERIMENT_VARIANTS, start=1):
         label = variant["label"]
         print(f"\n=== Experiment {idx}: {label} ===")
         cfg = build_config(base_config, variant, persist_root, idx)
-
-        # Initialize pipeline with this config
         pipeline = RAGPipeline(cfg)
         t0 = time.time()
-        pipeline.ensure_index()  # builds index for this variant (chunk_size affects hash)
+        pipeline.ensure_index()
         t_index = time.time() - t0
-
-        # Retrieval & (optional) answer
         t1 = time.time()
         if no_llm:
-            # Manual retrieval only
-            if not pipeline._retriever:  # ensure retriever exists
-                # ensure_index already builds it
+            if not pipeline._retriever:
                 pass
             docs = pipeline._retriever.invoke(EVAL_QUESTION)
-            # Synthesize a pseudo AnswerResult-compatible structure (answer empty)
             from app.core.models import AnswerResult, RetrievalResult, ChunkMetadata
             retrieval_results = []
             sources_seen = {}
@@ -184,23 +101,17 @@ def main():
 
         answer_data = serialize_answer_result(answer_result)
         config_json = json.loads(cfg.to_json())
-
         result_record = {
             "experiment_index": idx,
             "label": label,
             "question": EVAL_QUESTION,
             "config": config_json,
-            "timings_sec": {
-                "index_build": round(t_index, 3),
-                "qa": round(t_qa, 3),
-                "total": round(total_time, 3),
-            },
+            "timings_sec": {"index_build": round(t_index, 3), "qa": round(t_qa, 3), "total": round(total_time, 3)},
             "no_llm": no_llm,
             "retrieval_strategy": cfg.retrieval_strategy,
             "top_k": cfg.top_k,
             "chunk_size": cfg.chunk_size,
             "chunk_overlap": cfg.chunk_overlap,
-            # MMR params (even if not used)
             "mmr_lambda_mult": cfg.mmr_lambda_mult,
             "mmr_fetch_k_factor": cfg.mmr_fetch_k_factor,
             "mmr_min_fetch_k": cfg.mmr_min_fetch_k,
@@ -209,18 +120,12 @@ def main():
                 "n_sources": len(answer_data.get("sources", [])),
                 "n_retrieved_chunks": len(answer_data.get("raw_chunks", [])),
                 "avg_chunk_chars": round(
-                    sum(rc["char_len"] for rc in answer_data.get("raw_chunks", [])) / max(1, len(answer_data.get("raw_chunks", []))),
-                    1,
+                    sum(rc["char_len"] for rc in answer_data.get("raw_chunks", [])) / max(1, len(answer_data.get("raw_chunks", []))), 1
                 ),
                 "answer_chars": len(answer_data.get("answer", "")),
             },
         }
-
-        # Write detailed JSON
-        json_path = results_dir / f"exp_{idx:02d}_{label}.json"
-        json_path.write_text(json.dumps(result_record, ensure_ascii=False, indent=2))
-
-        # Write short Markdown summary
+        (results_dir / f"exp_{idx:02d}_{label}.json").write_text(json.dumps(result_record, ensure_ascii=False, indent=2))
         md_lines = [
             f"# Experiment {idx}: {label}",
             "",
@@ -249,9 +154,7 @@ def main():
         for rc in answer_data.get("raw_chunks", [])[:2]:
             preview = rc["text"][:500].replace("\n", " ")
             md_lines.append(f"- {rc['metadata']['source_name']} | len={rc['char_len']} | preview: {preview}…")
-
         (summaries_dir / f"exp_{idx:02d}_{label}.md").write_text("\n".join(md_lines))
-
         aggregate_summary.append({
             "idx": idx,
             "label": label,
@@ -265,18 +168,11 @@ def main():
             "qa_s": result_record['timings_sec']['qa'],
         })
 
-    # Global overview
     overview_path = root / "overview.json"
-    overview_path.write_text(json.dumps({
-        "question": EVAL_QUESTION,
-        "no_llm": no_llm,
-        "experiments": aggregate_summary,
-    }, ensure_ascii=False, indent=2))
-
+    overview_path.write_text(json.dumps({"question": EVAL_QUESTION, "no_llm": no_llm, "experiments": aggregate_summary}, ensure_ascii=False, indent=2))
     print(f"\nAll experiments completed. Results directory: {root}")
     print("Overview written to", overview_path)
-    print("Tip: Use jq or a notebook to analyze the JSON files.")
 
 
-if __name__ == "__main__":
+if __name__ == "__main__":  # pragma: no cover
     main()

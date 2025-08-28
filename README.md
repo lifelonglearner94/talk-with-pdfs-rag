@@ -9,41 +9,46 @@ Chat with collections of scientific PDF papers using a modular Retrieval-Augment
 | Modular pipeline (`RAGPipeline`) | ✅ |
 | Automatic index (re)build with param/file hashing | ✅ |
 | Streamlit chat UI | ✅ |
-| CLI (build / ask) | ✅ |
-| Basic citation keys (filename-based) | ✅ (authors/year TBD) |
+| CLI (build / ask / list-sources / rebuild / reset) | ✅ |
+| Citation handling: v1 (simple) / v2 (Autor‑Jahr) | ✅ (v2 default) |
 | Config via env (`RAG_` prefix) | ✅ |
 | Logging + timing decorator | ✅ (basic) |
-| Tests (config + basic pipeline) | ✅ (more pending) |
-| Retriever strategy switch (similarity / mmr) | ✅ |
-| Future extension scaffolds (rerank, expansion) | ❌ (planned) |
-| Rich citation extraction (authors, year, pages) | ❌ (planned) |
-| Structured JSON logging | ❌ (planned) |
+| Tests (hashing, ingestion, retrieval kwargs, list sources) | ✅ |
+| Retriever strategy switch (similarity / mmr + tunables) | ✅ |
+| Future extension scaffolds (rerank, expansion) | 🚧 (planned) |
+| Rich citation extraction (authors, year, pages) | 🚧 (planned) |
+| Structured JSON logging | ✅ (RAG_LOG_JSON=1) |
 
 ## 🧱 Architecture Overview
 
 ```
 app/
    core/
-      config.py        # RAGConfig (env + parameters)
-      ingestion.py     # PDF loading
-      splitting.py     # Chunking logic
-      embeddings.py    # Embedding provider
-      vectorstore.py   # Chroma persistence + hash management
-      hashing.py       # File + params hash logic
-      retriever.py     # RetrieverFactory (strategy aware)
-      generator.py     # Answer generation chain
-      prompting.py     # Prompt template versions
-      citations.py     # Citation key utilities (placeholder for richer parsing)
-      logging.py       # Logger + timing decorator
-      models.py        # Dataclasses for results
-      rag_pipeline.py  # High-level orchestration
+      config.py         # RAGConfig (env + parameters, v2 prompt default)
+      ingestion.py      # PDF loading (filters Zone.Identifier artifacts)
+      splitting.py      # RecursiveCharacterTextSplitter wrapper
+      embeddings.py     # Google embeddings + resilient backoff wrapper
+      vectorstore.py    # Chroma persistence & source listing
+      hashing.py        # Stable index hash (files + params)
+      retriever.py      # Strategy-aware retriever factory
+      retrieval_utils.py# Central search kwargs builder (MMR math)
+      generator.py      # LLM chain assembly (prompt selection)
+      prompting.py      # Versioned prompt templates (v1, v2)
+      citations.py      # Citation key utilities (future enrichment)
+      logging.py        # Logger + timing decorator
+      models.py         # Dataclasses for answer & retrieval results
+      rag_pipeline.py   # High-level orchestration
    interfaces/
-      streamlit_app.py # UI entrypoint
-      cli.py           # CLI (build / ask)
+      streamlit_app.py  # UI entrypoint
+      cli.py            # CLI (build / rebuild / ask / list-sources / reset)
    tests/
       test_config.py
+      test_hash_and_ingestion.py
+      test_retrieval_kwargs.py
+      test_list_sources.py
       test_ingestion_split_retrieve.py
-run_app.sh           # Convenience launcher for UI
+run_app.sh            # Convenience launcher for UI
+docker-start.sh       # Helper to run container with host PDFs
 ```
 
 Legacy monolithic code has been removed; all functionality now flows through the modular `RAGPipeline` and interface layers.
@@ -61,8 +66,11 @@ Environment variables (prefix `RAG_`) override defaults. Example:
 | `RAG_TOP_K` | Retrieval top-k | `10` |
 | `RAG_EMBEDDING_MODEL` | Embedding model name | `models/text-embedding-004` |
 | `RAG_LLM_MODEL` | LLM model name | `gemini-2.5-flash` |
-| `RAG_PROMPT_VERSION` | Prompt template version | `v1` |
+| `RAG_PROMPT_VERSION` | Prompt template version (`v1` simple, `v2` Autor‑Jahr) | `v2` |
 | `RAG_RETRIEVAL_STRATEGY` | `similarity` or `mmr` | `similarity` |
+| `RAG_MMR_LAMBDA_MULT` | MMR relevance↔diversity balance (1=relevanz) | `0.5` |
+| `RAG_MMR_FETCH_K_FACTOR` | Multiplier for candidate pool size | `4` |
+| `RAG_MMR_MIN_FETCH_K` | Mindestanzahl Kandidaten (floor) | `50` |
 | `RAG_LOG_LEVEL` | Log level (`DEBUG`, `INFO`, …) | `INFO` |
 
 You must also set `GOOGLE_API_KEY` (handled by `langchain-google-genai`). Put all into a `.env` file (loaded by Streamlit or uv if configured):
@@ -95,45 +103,58 @@ Open http://localhost:8501.
 
 ### CLI
 ```bash
-# Build / rebuild index explicitly
+# Build index if needed
 rag-pdf-chat build
+
+# Force rebuild regardless of hash
+rag-pdf-chat rebuild    # or: rag-pdf-chat build --force
 
 # Ask a question
 rag-pdf-chat ask "Was sind die wichtigsten Scheduling-Strategien in Kubernetes?"
+
+# List currently indexed source document names
+rag-pdf-chat list-sources
+
+# Delete vectorstore (next query will rebuild from scratch)
+rag-pdf-chat reset
 ```
 
-If you change chunking or add PDFs, the hashing logic will trigger a rebuild automatically on next query; `build` forces it proactively.
+If you change chunking or add PDFs, the hashing logic triggers a rebuild automatically when needed; use `rebuild` to force proactively.
 
-## 🧪 Testing
+## 🧪 Testing & Tooling
 
-Current tests (extend soon):
 ```bash
-uv run pytest -q
+uv run pytest -q          # run test suite
+uv run ruff check .       # lint
+uv run mypy app/core      # type check core modules
 ```
-Planned additions:
-1. Hash invalidation test (change chunk_size -> new hash).
-2. Retrieval contract (exact k when corpus large enough).
-3. Chunk boundary invariants (no chunk > chunk_size + small tolerance).
-4. Citation key presence.
+Tests include: env override config, hash invalidation, ingestion filtering of Zone.Identifier artifacts, retrieval kwargs (MMR boundaries), list_sources ordering & uniqueness, and (behind skips) pipeline answer flow.
 
-## 🧩 Prompting
-Prompts live in `prompting.py` (versioned). Version `v1` (German) enforces grounded answers and simple source citation. Future versions will introduce structured sectioned outputs and APA-like citations once metadata enrichment is implemented.
+## 🧩 Prompting / Versions
+Prompts live in `prompting.py`.
+
+| Version | Fokus | Zitation | Verwendung |
+|---------|-------|----------|------------|
+| v1 | Einfache grounded Antwort | (QuelleName) | Legacy / einfache Fälle |
+| v2 (Default) | Wissenschaftlicher Ton, Autor‑Jahr Format | (Autor Jahr) pro Satz / kombiniert | Aktueller Standard |
+
+Setze `RAG_PROMPT_VERSION=v1` für die frühere, kürzere Variante.
 
 ## 🪪 Citations & Metadata
 Currently: filename → `citation_key` + `source_name`. Planned: author/year extraction (via PDF metadata or first-page heuristics) + page number propagation and grouping of chunks by source.
 
-## � Index Hashing
+## 🗂️ Index Hashing
 Hash includes: sorted list of PDF (name, mtime, size) + subset of config params + format version. Stored at `vectorstore/index_state.json`. Mismatch triggers rebuild.
 
 ## 🧠 Retrieval Strategies
 Toggle similarity / mmr (Maximal Marginal Relevance) at runtime (sidebar or env). More strategies (hybrid keyword, rerank) will integrate via `RetrieverFactory` extension.
 
 ## 🪵 Logging & Timing
-Basic logger (`rag` namespace) with millisecond timing decorator `@timed`. Set `RAG_LOG_LEVEL=DEBUG` for verbose traces. Planned: JSON log mode & token accounting hooks.
+Logger (`rag` namespace) with millisecond timing decorator `@timed`. Set `RAG_LOG_LEVEL=DEBUG` for verbose traces. Enable structured JSON logs with `RAG_LOG_JSON=1` (one JSON object per line on stdout). Future: token accounting hooks.
 
-## � Roadmap (Planned Enhancements)
+## 🛣️ Roadmap (Planned Enhancements)
 Short-term:
-- Structured JSON logging + optional OpenTelemetry hooks
+- Optional OpenTelemetry hooks
 - Rich citation enrichment (`citations.py` upgrades)
 - Reranking interface (`reranking.py`) + query expansion (`query_expansion.py`)
 - Additional tests & evaluation harness
@@ -170,6 +191,10 @@ Built with LangChain, Chroma, Streamlit, and Google Gemini models.
 
 ---
 
-Tip: Name PDFs like `Surname_Year_Title.pdf` to future‑proof citation extraction.
+Version: 0.2.0 (siehe `pyproject.toml`). Falls ein altes `talk_with_pdfs.egg-info` Verzeichnis Version 0.1.0 zeigt, bitte `rm -rf talk_with_pdfs.egg-info && uv build` ausführen um zu aktualisieren.
+
+---
+
+Tip: Name PDFs like `Surname, 2024, Title of Paper.pdf` to future‑proof richer citation extraction in v3.
 
 Pro-Tipp: Stelle spezifische Fragen: statt "Was steht in den PDFs?" lieber "Welche Scheduling-Optimierungen für Kubernetes werden im Paper von 2024 vorgeschlagen?".

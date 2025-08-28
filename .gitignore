@@ -1,30 +1,60 @@
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.venv/
+venv/
+env/
+.env
+.env.local
+*.log
+vectorstore/
+data/*
+!data/.keep
+experiments/rag_eval_*/
+experiments/vectorstores/
+experiments/results/
+experiments/summaries/
+*.sqlite3
+*.pdf:Zone.Identifier
 # Environment variables
 .env
+__pycache__/
+*.py[ocd]
+*$py.class
+*.so
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.venv/
+venv/
+ENV/
+env/
+.env
+.env.local
+*.log
 
 # Vector database (generated)
 vectorstore/
 
-# Local data PDFs (keep directory but ignore actual papers)
+# Local data PDFs (keep directory but ignore actual papers & archives)
 data/*.pdf
 data/*.PDF
 data/*.zip
 data/*.tar
 !data/.gitkeep
 
-# Python-generated files
-__pycache__/
-*.py[oc]
-*.py[cod]
-*$py.class
-*.so
-.Python
-build/
-dist/
-wheels/
-*.egg-info
-.installed.cfg
-*.egg
-MANIFEST
+# Experiments & evaluation artifacts
+experiments/rag_eval_*/
+experiments/vectorstores/
+experiments/results/
+experiments/summaries/
+
+*.sqlite3
+*.pdf:Zone.Identifier
 
 # Testing & coverage
 .pytest_cache/
@@ -41,6 +71,7 @@ dmypy.json
 pyrightconfig.json
 
 # Virtual environments
+# Virtual environments (already handled above but keep for clarity)
 .venv
 venv/
 ENV/
@@ -80,5 +111,7 @@ temp/
 *.bak
 *.pid
 
-# Lock/installation artifacts (keep uv.lock tracked, so not ignored)
-# (Intentionally not ignoring uv.lock for reproducibility)
+# Docs (exclude generated or local notes; keep structure if needed)
+docs/
+
+# Keep uv.lock tracked (do NOT ignore)

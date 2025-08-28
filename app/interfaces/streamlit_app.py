@@ -57,20 +57,21 @@ def main():
             mmr_lambda = st.slider("Lambda (Relevanz↔Diversität)", 0.0, 1.0, float(mmr_lambda), 0.05, help="1.0 = reine Relevanz, 0 = maximale Diversität")
             mmr_fetch_factor = st.slider("Fetch k Faktor", 1, 10, int(mmr_fetch_factor), help="Kandidaten-Multiplikator: fetch_k = max(k * Faktor, Mindest-Fetch k)")
             mmr_min_fetch = st.slider("Mindest Fetch k", 10, 200, int(mmr_min_fetch), 5, help="Untergrenze für Kandidatenpool")
-        if top_k != pipeline.config.top_k or strategy != pipeline.config.retrieval_strategy:
-            pipeline.config.top_k = top_k
-            pipeline.config.retrieval_strategy = strategy
-            pipeline._retriever = pipeline.vs_manager.as_retriever(pipeline.config)
-        # Apply MMR param changes (only rebuild retriever if strategy is mmr and values changed)
-        if strategy == "mmr" and (
-            mmr_lambda != pipeline.config.mmr_lambda_mult or
-            mmr_fetch_factor != pipeline.config.mmr_fetch_k_factor or
-            mmr_min_fetch != pipeline.config.mmr_min_fetch_k
-        ):
-            pipeline.config.mmr_lambda_mult = mmr_lambda
-            pipeline.config.mmr_fetch_k_factor = mmr_fetch_factor
-            pipeline.config.mmr_min_fetch_k = mmr_min_fetch
-            pipeline._retriever = pipeline.vs_manager.as_retriever(pipeline.config)
+        # Apply changes via pipeline encapsulation
+        update_kwargs = {}
+        if top_k != pipeline.config.top_k:
+            update_kwargs["top_k"] = top_k
+        if strategy != pipeline.config.retrieval_strategy:
+            update_kwargs["retrieval_strategy"] = strategy
+        if strategy == "mmr":
+            if mmr_lambda != pipeline.config.mmr_lambda_mult:
+                update_kwargs["mmr_lambda_mult"] = mmr_lambda
+            if mmr_fetch_factor != pipeline.config.mmr_fetch_k_factor:
+                update_kwargs["mmr_fetch_k_factor"] = mmr_fetch_factor
+            if mmr_min_fetch != pipeline.config.mmr_min_fetch_k:
+                update_kwargs["mmr_min_fetch_k"] = mmr_min_fetch
+        if update_kwargs:
+            pipeline.update_settings(**update_kwargs)
 
     for msg in st.session_state.messages:
         with st.chat_message(msg["role"]):

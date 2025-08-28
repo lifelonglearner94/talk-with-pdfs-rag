@@ -1,9 +1,21 @@
 from __future__ import annotations
-import logging, time, functools, os
+import logging, time, functools, os, json
 
 LOG_LEVEL = os.getenv("RAG_LOG_LEVEL", "INFO").upper()
 
-formatter = logging.Formatter('%(asctime)s %(levelname)s %(name)s %(message)s')
+if os.getenv("RAG_LOG_JSON", "0") == "1":
+    class _JsonFormatter(logging.Formatter):
+        def format(self, record: logging.LogRecord) -> str:  # pragma: no cover simple json
+            payload = {
+                "ts": int(record.created * 1000),
+                "level": record.levelname,
+                "logger": record.name,
+                "msg": record.getMessage(),
+            }
+            return json.dumps(payload, ensure_ascii=False)
+    formatter = _JsonFormatter()
+else:
+    formatter = logging.Formatter('%(asctime)s %(levelname)s %(name)s %(message)s')
 _handler = logging.StreamHandler()
 _handler.setFormatter(formatter)
 
