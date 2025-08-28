@@ -119,11 +119,28 @@ class RAGPipeline:
             self._retriever = RerankingRetriever(base_ret, reranker, self.config.top_k, fetch_k=fetch_k)
         else:
             self._retriever = base_ret
-        logger.info("pipeline.ensure_index done")
+        # Ensure the answer generator reflects the current config (prompt_version / answer_mode)
+        try:
+            self.answer_gen = AnswerGenerator(self.config)
+        except Exception:
+            # Best-effort: keep existing generator on failure
+            logger.exception("recreating AnswerGenerator in ensure_index failed")
+        logger.info("pipeline.ensure_index done prompt_version=%s answer_mode=%s", self.config.prompt_version, self.config.answer_mode)
 
     @timed("answer")
     def answer(self, question: str) -> AnswerResult:
-        logger.info("pipeline.answer question=%s", question)
+        # Preserve original user question for logging/telemetry
+        original_question = question
+        logger.info("pipeline.answer question=%s", original_question)
+        # Enhance the user question via a lightweight LLM rewriter before
+        # retrieval/expansion. This improves RAG recall in many cases.
+        try:
+            question = self.answer_gen.enhance_query(question)
+            # Log the effective/enhanced question so it appears in standard logs
+            logger.info("pipeline.answer enhanced_question=%s", question[:200])
+        except Exception:
+            # If enhancement fails, continue with original question
+            question = original_question
         if not self._retriever:
             self.ensure_index()
         # Adaptive k (vector-only, no rerank yet)
@@ -268,7 +285,8 @@ class RAGPipeline:
                 rerank_cache_hits = stats.get('cache_hits')
             with (log_dir / "query_log.jsonl").open("a", encoding="utf-8") as fh:
                 fh.write(json.dumps({
-                    "question": question,
+                    "question": original_question,
+                    "enhanced_question": question if question != original_question else None,
                     "latency_sec": round(latency, 3),
                     "retrieval_mode": getattr(self.config, 'retrieval_mode', 'vector'),
                     "retrieval_strategy": self.config.retrieval_strategy,

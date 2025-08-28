@@ -26,10 +26,12 @@ def get_prompt(version: str = "v1") -> PromptTemplate:
             "\nKontext:\n{context}\n\nFrage: {question}\n\nAntwort:"  # neue präzisere Variante
         )
     elif version == "v3_json":
+        # Escape outer JSON braces ({{ }}) so PromptTemplate doesn't treat them as
+        # template variables. Inner quotes remain as-is.
         template = (
             AUTHOR_YEAR_CITATION_INSTRUCTIONS +
             "\nErzeuge eine JSON Antwort mit folgendem Schema ohne zusätzliche Erklärungen:\n"\
-            "{\n  \"direct_answer\": string,\n  \"supporting_facts\": [ { \"sentence\": string, \"citations\": [string] } ],\n  \"citations\": [ { \"label\": string, \"snippet\": string } ],\n  \"confidence\": number\n}\n"\
+            "{{\n  \"direct_answer\": string,\n  \"supporting_facts\": [ {{ \"sentence\": string, \"citations\": [string] }} ],\n  \"citations\": [ {{ \"label\": string, \"snippet\": string }} ],\n  \"confidence\": number\n}}\n"\
             "Kontext:\n{context}\n\nFrage: {question}\n\nJSON Antwort:"  # structured output
         )
     else:

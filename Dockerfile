@@ -12,14 +12,13 @@ RUN apt-get update && apt-get install -y \
 # UV Package Manager installieren
 RUN pip install uv
 
-# Projekt-Dateien kopieren
-COPY pyproject.toml uv.lock ./
+# Projekt-Dateien kopieren (inkl. Package-Source und README) —
+# setuptools needs the package sources present during build.
+COPY pyproject.toml uv.lock README.md ./
+COPY app/ ./app/
 
 # Dependencies installieren
 RUN uv sync --frozen
-
-# App-Code kopieren
-COPY app/ ./app/
 
 # Vectorstore-Verzeichnis erstellen (wird zur Laufzeit verwendet)
 RUN mkdir -p vectorstore

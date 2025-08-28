@@ -25,6 +25,7 @@ dependencies = [
     "streamlit",
     "pydantic>=2",
     "rank-bm25",
+    "fastapi>=0.116.1",
 ]
 
 [project.optional-dependencies]

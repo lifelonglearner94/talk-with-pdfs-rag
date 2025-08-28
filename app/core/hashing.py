@@ -50,4 +50,16 @@ def load_stored_hash(persist_dir: Path) -> str | None:  # backward compatibility
 
 def store_hash(persist_dir: Path, the_hash: str):
     f = persist_dir / "index_state.json"
-    f.write_text(json.dumps({"hash": the_hash, "version": INDEX_FORMAT_VERSION}, indent=2))
+    payload = json.dumps({"hash": the_hash, "version": INDEX_FORMAT_VERSION}, indent=2)
+    # Atomic write: write to temp file then replace
+    try:
+        tmp = persist_dir / "index_state.json.tmp"
+        tmp.write_text(payload, encoding="utf-8")
+        tmp.replace(f)
+    except Exception:
+        # Best-effort: fall back to direct write if replace fails
+        try:
+            f.write_text(payload, encoding="utf-8")
+        except Exception:
+            # If even that fails, there's nothing more to do here
+            pass

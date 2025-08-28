@@ -86,6 +86,22 @@ def main():
             rr_overlap_w = st.number_input("Overlap Gewicht", 0.0, 5.0, float(pipeline.config.rerank_overlap_weight), 0.1, help="Gewicht für unique Query Token Overlap")
         with col_rr2:
             rr_tfidf_w = st.number_input("TF-IDF Gewicht", 0.0, 5.0, float(pipeline.config.rerank_tfidf_weight), 0.1, help="Gewicht für einfachen TF-IDF Score")
+        # Additional reranker knobs (may not exist on older pipelines)
+        rr_fetch_factor = getattr(pipeline.config, "rerank_fetch_k_factor", None)
+        rr_fetch_max = getattr(pipeline.config, "rerank_fetch_k_max", None)
+        rr_cache_max = getattr(pipeline.config, "rerank_cache_max", None)
+        if rr_fetch_factor is not None or rr_fetch_max is not None or rr_cache_max is not None:
+            st.caption("Erweiterte Reranker Einstellungen")
+            col_r1, col_r2, col_r3 = st.columns(3)
+            with col_r1:
+                if rr_fetch_factor is not None:
+                    rr_fetch_factor = st.number_input("Rerank Fetch Faktor", 1, 20, int(rr_fetch_factor), help="Multiplikator für Kandidaten-Überfetch vor Rerank")
+            with col_r2:
+                if rr_fetch_max is not None:
+                    rr_fetch_max = st.number_input("Rerank Fetch Max", 1, 500, int(rr_fetch_max), help="Maximale Anzahl Kandidaten, die an den Reranker geschickt werden")
+            with col_r3:
+                if rr_cache_max is not None:
+                    rr_cache_max = st.number_input("Rerank Cache Max", 0, 20000, int(rr_cache_max), help="Max Einträge im LRU Rerank Cache (0 = deaktiviert)")
         query_expansion = st.checkbox("Heuristische Query Expansion", value=pipeline.config.query_expansion, help="Synonyme & Zerlegung kombinieren via RRF")
         expansion_max = st.slider("Max. Expansion Varianten", 0, 5, pipeline.config.query_expansion_max, help="Zusätzliche Varianten außer Original")
         st.markdown("---")
@@ -100,6 +116,10 @@ def main():
         st.subheader("Antwortformat")
         answer_mode = st.selectbox("Answer Mode", ["text", "json"], index=["text", "json"].index(pipeline.config.answer_mode))
         prompt_version = st.selectbox("Prompt Version", ["v1", "v2", "v3_json"], index=["v1","v2","v3_json"].index(pipeline.config.prompt_version))
+        # Vector backend selection (if pipeline exposes it)
+        vector_backend = getattr(pipeline.config, "vector_backend", None)
+        if vector_backend is not None:
+            vector_backend = st.selectbox("Vector Backend", ["chroma", "faiss", "milvus"], index=["chroma", "faiss", "milvus"].index(vector_backend) if vector_backend in ("chroma","faiss","milvus") else 0, help="Wähle das Vector-Backend (nur für Anzeige / Rebuild relevant)")
         # Apply changes via pipeline encapsulation
         update_kwargs = {}
         if retrieval_mode != pipeline.config.retrieval_mode:
@@ -149,6 +169,20 @@ def main():
             pipeline.ensure_index(force=True)
             st.success("Index neu aufgebaut mit aktualisierten Chunking Parametern.")
             st.experimental_rerun()
+        # Optional: run a small eval if pipeline exposes it
+        if hasattr(pipeline, "run_eval"):
+            if st.button("Kleines Evaluationstest-Run ausführen"):
+                with st.spinner("Eval läuft..."):
+                    res = pipeline.run_eval(sample_only=True)
+                st.json(res)
+    # ...existing code...
+
+    # Main-area control: Neuer Chat starten
+    if st.button("Neuer Chat", key="new_chat_main"):
+        st.session_state.pop("messages", None)
+        st.session_state.pop("last_chunks", None)
+        st.session_state.pop("last_telemetry", None)
+        st.experimental_rerun()
 
     for msg in st.session_state.messages:
         with st.chat_message(msg["role"]):

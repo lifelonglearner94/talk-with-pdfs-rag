@@ -71,14 +71,18 @@ class StructuredPaperSplitter:
         # ALLCAPS short heading
         if line.isupper() and '.' not in line and 3 <= len(line.split()) <= 10:
             return True
-        # Numbered headings allow dot inside numeric prefix (e.g., 2.1) but not later in text.
+        # Numbered headings allow dotted numeric prefixes (e.g., 2.1, 3.2.1) but we must avoid
+        # false positives for pure version-like or year-only lines. Accept when the line has
+        # a numeric prefix followed by text (e.g. '1.1 Background'). Reject lines that are
+        # only a numeric version like '1.0' or a year like '2024'.
         if NUMBERED_HEADING_PATTERN.match(line):
-            # Reject lines that begin with a 4-digit year to avoid false positives like "2024 Results show ..."
             first_token = line.split()[0]
+            # Reject lines that begin with a 4-digit year to avoid false positives like "2024 Results show ..."
             if re.fullmatch(r"(19|20|21)\d{2}", first_token):
                 return False
-            # Reject simple version tokens like 1.0, 2.0, 1.0.0 etc.
-            if re.fullmatch(r"\d+(?:\.\d+){1,3}", first_token):
+            # Reject if the entire line is just a numeric version (e.g., '1.0', '1.0.0'),
+            # but allow numbered headings that have trailing text after the numbering.
+            if re.fullmatch(r"^\d+(?:\.\d+){1,3}$", line):
                 return False
             return True
         return False

@@ -1,6 +1,6 @@
  # 🔬 talk-with-pdfs – Modular RAG System for Scientific Articles
 
-Chat with collections of scientific PDF papers using a modular Retrieval-Augmented Generation (RAG) stack (LangChain + Chroma + Gemini) with a Streamlit UI and a CLI. The codebase has been refactored to cleanly separate ingestion, indexing, retrieval, and generation for easier extension.
+Chat with collections of scientific PDF papers using a modular Retrieval-Augmented Generation (RAG) stack (LangChain + Chroma + Gemini) with a Streamlit UI, a FastAPI service scaffold and a CLI. The codebase is refactored to separate ingestion, indexing, retrieval, reranking and generation for easier extension, evaluation and observability.
 
 ## ✨ Key Features
 
@@ -15,8 +15,10 @@ Chat with collections of scientific PDF papers using a modular Retrieval-Augment
 | Logging + timing decorator | ✅ (basic) |
 | Tests (hashing, ingestion, retrieval kwargs, list sources) | ✅ |
 | Retriever strategy switch (similarity / mmr + tunables) | ✅ |
-| Future extension scaffolds (rerank, expansion) | 🚧 (planned) |
-| Rich citation extraction (authors, year, pages) | 🚧 (planned) |
+| Reranking (candidate expansion, LRU cache, heuristics) | ✅ (scaffold + tunables) |
+| Heuristic query expansion | ✅ (scaffold + logging) |
+| Rich citation extraction (authors, year, pages) | 🚧 (in progress) |
+| API (FastAPI endpoints: /ask, /sources, /health, /metrics, /eval) | 🚧 (~45% complete) |
 | Structured JSON logging | ✅ (RAG_LOG_JSON=1) |
 
 ## 🧱 Architecture Overview
@@ -26,9 +28,9 @@ app/
    core/
       config.py         # RAGConfig (env + parameters, v2 prompt default)
       ingestion.py      # PDF loading (filters Zone.Identifier artifacts)
-      splitting.py      # RecursiveCharacterTextSplitter wrapper
-      embeddings.py     # Google embeddings + resilient backoff wrapper
-      vectorstore.py    # Chroma persistence & source listing
+   splitting.py      # RecursiveCharacterTextSplitter wrapper (basic + structured splitter v0.3)
+   embeddings.py     # Google embeddings + resilient backoff wrapper
+   vectorstore.py    # Chroma persistence & source listing (vector backend abstraction)
       hashing.py        # Stable index hash (files + params)
       retriever.py      # Strategy-aware retriever factory
       retrieval_utils.py# Central search kwargs builder (MMR math)
@@ -64,6 +66,15 @@ Environment variables (prefix `RAG_`) override defaults. Example:
 | `RAG_CHUNK_SIZE` | Chunk size characters | `1500` |
 | `RAG_CHUNK_OVERLAP` | Overlap characters | `200` |
 | `RAG_CHUNKING_MODE` | `basic` (char splitter) or `structure` (section-aware v0.1) | `basic` |
+| `RAG_RERANK_ENABLE`  | Enable reranking layer (heuristic reordering) | `0` |
+| `RAG_RERANK_FETCH_K_FACTOR` | Rerank candidate overfetch multiplier | `4` |
+| `RAG_RERANK_FETCH_K_MAX` | Rerank fetch max candidates | `200` |
+| `RAG_ADAPTIVE_K`     | Enable adaptive k selection for retrieval | `0` |
+| `RAG_QUERY_EXPANSION`| Enable heuristic query expansion (synonyms, decomposition) | `0` |
+| `RAG_QUERY_EXPANSION_MAX` | Max expansion variants | `2` |
+| `RAG_VECTOR_BACKEND` | Vector backend to use (`chroma`/`faiss`/`milvus`) | `chroma` |
+| `INDEX_FORMAT_VERSION` | Version marker for on-disk index format | `1` |
+| `RAG_LOG_JSON`       | Emit structured JSON logs (one JSON per line) | `0` |
 | `RAG_TOP_K` | Retrieval top-k | `10` |
 | `RAG_EMBEDDING_MODEL` | Embedding model name | `models/text-embedding-004` |
 | `RAG_LLM_MODEL` | LLM model name | `gemini-2.5-flash` |
@@ -102,6 +113,18 @@ rag-pdf-chat-ui
 ```
 Open http://localhost:8501.
 
+### FastAPI service (experimental)
+
+The repository contains an API scaffold that exposes async endpoints for programmatic access. Key endpoints (development):
+
+- `GET /health` — basic health check
+- `POST /ask` — async ask (returns request id / polling for results)
+- `GET /sources` — list indexed source docs
+- `POST /admin/init_pipeline` — admin: ensure/rebuild pipeline
+- `GET /metrics` — Prometheus exposition (when enabled)
+
+Use `./run_api.sh` to start the development API server (see script for env expectations).
+
 ### CLI
 ```bash
 # Build index if needed
@@ -120,7 +143,7 @@ rag-pdf-chat list-sources
 rag-pdf-chat reset
 ```
 
-If you change chunking or add PDFs, the hashing logic triggers a rebuild automatically when needed; use `rebuild` to force proactively.
+If you change chunking mode, enable accurate token counting, or add PDFs, the index-hashing logic triggers a rebuild automatically; use `rebuild` to force proactively.
 
 ## 🧪 Testing & Tooling
 
@@ -130,6 +153,8 @@ uv run ruff check .       # lint
 uv run mypy app/core      # type check core modules
 ```
 Tests include: env override config, hash invalidation, ingestion filtering of Zone.Identifier artifacts, retrieval kwargs (MMR boundaries), list_sources ordering & uniqueness, and (behind skips) pipeline answer flow.
+
+The evaluation harness under `experiments/` now supports recall@k, and the Phase 2 additions add MRR/MAP deltas and rerank comparisons. Use the harness to compare retrieval strategies and track improvements.
 
 ### Lightweight Evaluation Harness (MVP)
 
@@ -193,6 +218,8 @@ Long-term:
 | Always rebuilding | Check system clock & file permissions; verify hash file `vectorstore/index_state.json`. |
 | Slow first run | Embeddings computed only once; subsequent runs load persisted Chroma. |
 | Retrieval returns few/no sources | Increase `RAG_TOP_K`, verify chunk size not too small. |
+| Reranker appears slow | Reduce `RAG_RERANK_FETCH_K_MAX` or disable rerank for lower latency. |
+| API returns no data | Ensure pipeline was initialized via `POST /admin/init_pipeline` or run initial `rag-pdf-chat build`. |
 
 ## 🤝 Contributing
 1. Create feature branch.
@@ -208,10 +235,23 @@ Built with LangChain, Chroma, Streamlit, and Google Gemini models.
 
 ---
 
-Version: 0.2.0 (siehe `pyproject.toml`). Falls ein altes `talk_with_pdfs.egg-info` Verzeichnis Version 0.1.0 zeigt, bitte `rm -rf talk_with_pdfs.egg-info && uv build` ausführen um zu aktualisieren.
+Version: 0.2.0 (siehe `pyproject.toml`). The enhancement plan (docs/ENHANCEMENT_PLAN.md) documents recent progress: Phase 1 & 2 are complete; Phase 3 (API + metrics + ingestion durability) is ~45% done. Falls ein altes `talk_with_pdfs.egg-info` Verzeichnis Version 0.1.0 zeigt, bitte `rm -rf talk_with_pdfs.egg-info && uv build` ausführen um zu aktualisieren.
 
 ---
 
 Tip: Name PDFs like `Surname, 2024, Title of Paper.pdf` to future‑proof richer citation extraction in v3.
+
+## Progress & Next Steps
+
+- Phase 1 (chunking, metadata, hybrid retrieval, logging): ✅
+- Phase 2 (reranking, adaptive k, expansion, JSON answer scaffolding): ✅
+- Phase 3 (API, ingestion queue, vector backend abstraction, metrics): ~45% — remaining work: durable on-disk dedupe, analytics dashboard, nightly regression CI.
+
+If you'd like, I can also:
+
+- update `run_api.sh` docs and example `.env` snippets in this README
+- add a minimal example curl sequence for `/ask` and `/eval/run`
+- prepare a short CONTRIBUTING checklist for Phase 3 tasks
+
 
 Pro-Tipp: Stelle spezifische Fragen: statt "Was steht in den PDFs?" lieber "Welche Scheduling-Optimierungen für Kubernetes werden im Paper von 2024 vorgeschlagen?".

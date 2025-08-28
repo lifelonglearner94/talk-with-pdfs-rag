@@ -9,6 +9,7 @@ from .retrieval_utils import build_search_kwargs
 from .logging import logger
 import shutil
 import json
+from typing import Optional
 
 class VectorStoreManager:
     def __init__(self, persist_dir: Path, embedding_fn):
@@ -39,6 +40,26 @@ class VectorStoreManager:
             embedding=self.embedding_fn,
             persist_directory=str(self.persist_dir)
         )
+        # Persist a simple sources.json listing citation keys or source names
+        try:
+            sources = []
+            for d in chunks:
+                md = d.metadata or {}
+                # prefer citation_key if present, otherwise source_name or filename
+                s = md.get("citation_key") or md.get("source_name") or Path(md.get("source", "")).stem
+                if s and s not in sources:
+                    sources.append(s)
+            # Write sources.json atomically: write to a temp file then replace
+            try:
+                tmp = self.persist_dir / "sources.json.tmp"
+                tmp.write_text(json.dumps(sources, ensure_ascii=False), encoding="utf-8")
+                tmp.replace(self.persist_dir / "sources.json")
+            except Exception:
+                # best-effort persistence; indexing should continue even if this fails
+                logger.debug("could not persist sources.json (atomic write failed)")
+        except Exception:
+            # Outer guard: ensure build proceeds even if metadata extraction fails
+            logger.debug("could not build sources list for persistence")
         new_hash = compute_index_hash(pdf_paths, config)
         store_hash(self.persist_dir, new_hash)
 
@@ -88,3 +109,22 @@ class VectorStoreManager:
             shutil.rmtree(self.persist_dir)
         self.persist_dir.mkdir(parents=True, exist_ok=True)
         self.vectorstore = None
+
+    def create_ingestion_queue(self, index_name: Optional[str] = None, batch_size: int = 16, interval: float = 1.0):
+        """Create an IngestionQueue wired to a vector backend (Chroma by default).
+
+        This uses the `vector_backends.ChromaBackend` adapter if available; in
+        tests the ChromaBackend can be monkeypatched to a fake implementation.
+        Returns an IngestionQueue instance (not started).
+        """
+        # Local import to keep optional dependency boundaries clear
+        try:
+            from core.ingestion_queue import worker_from_backend, IngestionQueue
+            from vector_backends import ChromaBackend
+        except Exception as e:  # pragma: no cover - defensive
+            raise RuntimeError("required ingestion or backend modules not available") from e
+
+        backend = ChromaBackend(persist_directory=str(self.persist_dir))
+        idx_name = index_name or "default"
+        worker = worker_from_backend(backend, idx_name)
+        return IngestionQueue(worker=worker, batch_size=batch_size, interval=interval)

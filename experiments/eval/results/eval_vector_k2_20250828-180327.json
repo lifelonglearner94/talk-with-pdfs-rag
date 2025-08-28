@@ -1,0 +1,40 @@
+{
+  "summary": {
+    "retrieval_recall@k": 0.5,
+    "answer_keyword_coverage": 0.25,
+    "mrr@k": 1.0,
+    "map@k": 1.0
+  },
+  "details": [
+    {
+      "id": "q1",
+      "question": "What are typical benefits of Kubernetes for scalability?",
+      "recall_at_k": 0.5,
+      "keyword_coverage": 0.0,
+      "mrr": 1.0,
+      "ap": 1.0,
+      "retrieved_sources": [
+        "Gudelli, 2021, Kubernetes-based orchestration for scalable cloud solutions",
+        "Gudelli, 2021, Kubernetes-based orchestration for scalable cloud solutions"
+      ],
+      "answer": "Kubernetes erm\u00f6glicht es Organisationen, Anwendungen ohne manuelles Eingreifen zu skalieren (Gudelli). Ohne Kubernetes sind Organisationen nicht in der Lage, Anwendungen ohne ein gewisses manuelles Eingreifen zu skalieren (Gudelli)."
+    },
+    {
+      "id": "q2",
+      "question": "Which papers discuss scheduling algorithms in Kubernetes?",
+      "recall_at_k": 0.5,
+      "keyword_coverage": 0.5,
+      "mrr": 1.0,
+      "ap": 1.0,
+      "retrieved_sources": [
+        "Senjab, 2023, A survey of Kubernetes scheduling algorithms",
+        "Senjab, 2023, A survey of Kubernetes scheduling algorithms"
+      ],
+      "answer": "Die \u00dcberpr\u00fcfung umfasst 47 Studien, die sich auf die Optimierung von Kubernetes-Scheduling-Algorithmen konzentrieren (Senjab 2023). Diese Studien wurden in den letzten f\u00fcnf Jahren ver\u00f6ffentlicht (Senjab 2023). Sie repr\u00e4sentieren eine vielf\u00e4ltige Reihe von Forschungsmethoden, einschlie\u00dflich Umfragen, Experimenten und Simulationen (Senjab 2023)."
+    }
+  ],
+  "k": 2,
+  "mode": "vector",
+  "rerank_compared": false,
+  "elapsed_sec": 28.16
+}
