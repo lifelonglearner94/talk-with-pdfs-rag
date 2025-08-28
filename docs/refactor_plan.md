@@ -49,7 +49,7 @@ app/
     test_ingestion.py
     test_splitter.py
     test_retrieval.py
-main.py (kept as thin bootstrap or removed in favor of CLI)
+main.py (removed; functionality migrated to modular pipeline + CLI/UI)
 ```
 
 ## Refactor Phases
@@ -86,7 +86,7 @@ main.py (kept as thin bootstrap or removed in favor of CLI)
 - Integrate `pytest` in `pyproject.toml` optional dev extras.
 
 ### Phase 6: Streamlit Refactor
-- Rename `start_app.py` -> `interfaces/streamlit_app.py`.
+- Rename `start_app.py` -> `interfaces/streamlit_app.py` (done).
 - Inject `RAGPipeline` instead of directly calling searcher.
 - Add sidebar controls: top_k slider, similarity vs MMR, show raw retrieved chunks toggle.
 - Add expandable section to inspect retrieved chunks with metadata.
@@ -158,6 +158,10 @@ Instructions:
 
 ## Streamlit Enhancements
 - Sidebar controls: chunk size (readonly if index already built), top_k, retrieval strategy.
+
+---
+### Cleanup (Aug 2025)
+Residual legacy files `app/start_app.py` and `app/main.py` still present in repo were purged to avoid confusion. Current UI entrypoint: `app/interfaces/streamlit_app.py`. All pipeline access should go through `RAGPipeline`.
 - Expander: Show retrieved chunk previews with metadata (score if available).
 - Error panel if index outdated relative to new PDFs detected (button to rebuild).
 

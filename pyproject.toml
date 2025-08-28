@@ -3,7 +3,8 @@ name = "talk-with-pdfs"
 version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
-requires-python = ">=3.12"
+# Relaxed to 3.10 to match execution environment (tests run under 3.10). Adjust back if deploying with newer runtime.
+requires-python = ">=3.10"
 dependencies = [
     "langchain",
     "langchain-community",
@@ -12,5 +13,20 @@ dependencies = [
     "python-dotenv",
     "pypdf",
     "chromadb",
-    "streamlit"
+    "streamlit",
+    "pydantic"
 ]
+
+[project.optional-dependencies]
+dev = ["pytest"]
+
+[project.scripts]
+rag-pdf-chat = "app.interfaces.cli:main"
+rag-pdf-chat-ui = "app.interfaces.streamlit_app:main"
+
+[build-system]
+requires = ["setuptools", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+packages = ["app"]

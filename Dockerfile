@@ -36,4 +36,4 @@ VOLUME ["/app/data"]
 EXPOSE 8501
 
 # Streamlit App starten
-CMD ["uv", "run", "streamlit", "run", "app/start_app.py", "--server.address", "0.0.0.0", "--server.port", "8501"]
+CMD ["uv", "run", "streamlit", "run", "app/interfaces/streamlit_app.py", "--server.address", "0.0.0.0", "--server.port", "8501"]

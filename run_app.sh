@@ -8,4 +8,4 @@ echo "2. GOOGLE_API_KEY in Ihrer .env-Datei"
 echo ""
 
 # Virtuelle Umgebung aktivieren und App starten
-uv run streamlit run app/start_app.py
+uv run streamlit run app/interfaces/streamlit_app.py
