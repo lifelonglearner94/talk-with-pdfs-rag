@@ -63,6 +63,7 @@ Environment variables (prefix `RAG_`) override defaults. Example:
 | `RAG_PERSIST_DIR` | Vector store directory | `vectorstore` |
 | `RAG_CHUNK_SIZE` | Chunk size characters | `1500` |
 | `RAG_CHUNK_OVERLAP` | Overlap characters | `200` |
+| `RAG_CHUNKING_MODE` | `basic` (char splitter) or `structure` (section-aware v0.1) | `basic` |
 | `RAG_TOP_K` | Retrieval top-k | `10` |
 | `RAG_EMBEDDING_MODEL` | Embedding model name | `models/text-embedding-004` |
 | `RAG_LLM_MODEL` | LLM model name | `gemini-2.5-flash` |
@@ -130,6 +131,22 @@ uv run mypy app/core      # type check core modules
 ```
 Tests include: env override config, hash invalidation, ingestion filtering of Zone.Identifier artifacts, retrieval kwargs (MMR boundaries), list_sources ordering & uniqueness, and (behind skips) pipeline answer flow.
 
+### Lightweight Evaluation Harness (MVP)
+
+An experimental retrieval/answer quality harness lives under `experiments/eval/`.
+
+Contents (initial):
+* `run_eval.py` – runs a set of gold questions against the current index.
+* `gold_examples.jsonl` – each line: `{id, question, expected_keywords, source_papers}`.
+
+It computes recall@k over expected `source_papers` and keyword coverage in the generated answer (if LLM enabled). Output JSON metrics are timestamped under `experiments/results/`.
+
+Run (after placing PDFs & building index):
+```bash
+uv run python experiments/eval/run_eval.py --k 10
+```
+Future phases will extend with MRR / MAP and rerank comparisons.
+
 ## 🧩 Prompting / Versions
 Prompts live in `prompting.py`.
 
@@ -141,7 +158,7 @@ Prompts live in `prompting.py`.
 Setze `RAG_PROMPT_VERSION=v1` für die frühere, kürzere Variante.
 
 ## 🪪 Citations & Metadata
-Currently: filename → `citation_key` + `source_name`. Planned: author/year extraction (via PDF metadata or first-page heuristics) + page number propagation and grouping of chunks by source.
+Currently: filename → `citation_key` + `source_name`. Structured splitter adds `section` + `section_index` when `RAG_CHUNKING_MODE=structure`. Planned: author/year extraction (via PDF metadata or first-page heuristics) + page number propagation and grouping of chunks by source.
 
 ## 🗂️ Index Hashing
 Hash includes: sorted list of PDF (name, mtime, size) + subset of config params + format version. Stored at `vectorstore/index_state.json`. Mismatch triggers rebuild.

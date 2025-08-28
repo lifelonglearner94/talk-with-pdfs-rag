@@ -5,6 +5,15 @@ description = "Modular RAG pipeline (LangChain + Chroma + Gemini) to chat with c
 readme = "README.md"
 # Relaxed to 3.10 to match execution environment (tests run under 3.10). Adjust back if deploying with newer runtime.
 requires-python = ">=3.10"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "License :: OSI Approved :: MIT License",
+    "Intended Audience :: Developers",
+    "Topic :: Scientific/Engineering :: Information Analysis",
+]
 dependencies = [
     "langchain",
     "langchain-community",
@@ -15,6 +24,7 @@ dependencies = [
     "chromadb",
     "streamlit",
     "pydantic>=2",
+    "rank-bm25",
 ]
 
 [project.optional-dependencies]
@@ -25,15 +35,6 @@ dev = [
     "pre-commit>=3.7.0",
     "python-dotenv",
 ]
-
-[project.classifiers]
-Programming Language :: Python :: 3
-Programming Language :: Python :: 3.10
-Programming Language :: Python :: 3.11
-Programming Language :: Python :: 3.12
-License :: OSI Approved :: MIT License
-Intended Audience :: Developers
-Topic :: Scientific/Engineering :: Information Analysis
 
 [project.scripts]
 rag-pdf-chat = "app.interfaces.cli:main"

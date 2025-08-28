@@ -9,7 +9,11 @@ class AnswerGenerator:
     def __init__(self, config: RAGConfig):
         self.config = config
         self.llm = ChatGoogleGenerativeAI(model=config.llm_model, temperature=0.1)
-        self.prompt = get_prompt(config.prompt_version)
+        # Use JSON prompt version if answer_mode requests structured output
+        prompt_version = config.prompt_version
+        if config.answer_mode == "json" and prompt_version != "v3_json":
+            prompt_version = "v3_json"
+        self.prompt = get_prompt(prompt_version)
 
     def build_chain(self, retriever):
         def format_context(docs):
@@ -32,9 +36,9 @@ class AnswerGenerator:
                     parts.append(f"[Quelle {i}: {src}]\n{d.page_content}")
             return "\n\n".join(parts)
         chain = (
-            {"context": lambda q: format_context(retriever.invoke(q)), "question": RunnablePassthrough()} \
-            | self.prompt \
-            | self.llm \
+            {"context": lambda q: format_context(retriever.invoke(q)), "question": RunnablePassthrough()}
+            | self.prompt
+            | self.llm
             | StrOutputParser()
         )
         return chain

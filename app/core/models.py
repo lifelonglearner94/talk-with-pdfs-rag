@@ -8,6 +8,13 @@ class ChunkMetadata:
     chunk_id: str
     page: Optional[int] = None
     score: Optional[float] = None
+    section: Optional[str] = None
+    section_index: Optional[int] = None
+    section_level: Optional[int] = None
+    page_start: Optional[int] = None
+    page_end: Optional[int] = None
+    token_count: Optional[int] = None
+    splitting_mode: Optional[str] = None
 
 @dataclass
 class RetrievalResult:

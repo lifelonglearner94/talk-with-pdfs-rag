@@ -5,7 +5,7 @@ import hashlib
 from typing import Sequence
 from .config import RAGConfig
 
-INDEX_FORMAT_VERSION = 1
+INDEX_FORMAT_VERSION = 2  # bumped for page range + deterministic chunk_id schema changes
 
 
 def compute_index_hash(pdf_paths: Sequence[Path], config: RAGConfig) -> str:
@@ -28,17 +28,26 @@ def compute_index_hash(pdf_paths: Sequence[Path], config: RAGConfig) -> str:
     return hashlib.md5(raw).hexdigest()
 
 
-def load_stored_hash(persist_dir: Path) -> str | None:
+def load_index_state(persist_dir: Path) -> dict | None:
+    """Load the stored index state (hash + optional version).
+
+    Backward compatible: older files may only contain {"hash": "..."}.
+    """
     f = persist_dir / "index_state.json"
     if not f.exists():
         return None
     try:
         data = json.loads(f.read_text())
-        return data.get("hash")
+        return data
     except Exception:
         return None
 
 
+def load_stored_hash(persist_dir: Path) -> str | None:  # backward compatibility helper
+    state = load_index_state(persist_dir)
+    return state.get("hash") if state else None
+
+
 def store_hash(persist_dir: Path, the_hash: str):
     f = persist_dir / "index_state.json"
-    f.write_text(json.dumps({"hash": the_hash}, indent=2))
+    f.write_text(json.dumps({"hash": the_hash, "version": INDEX_FORMAT_VERSION}, indent=2))
