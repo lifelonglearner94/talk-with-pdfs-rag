@@ -14,6 +14,7 @@ build/
 venv/
 ENV/
 env/
+.github/
 
 # Testing
 .pytest_cache/
