@@ -1,0 +1,91 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg-info/
+dist/
+build/
+
+# Environment
+.env
+.env.local
+.venv/
+venv/
+ENV/
+env/
+
+# Testing
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+coverage.xml
+
+# Type checking
+.mypy_cache/
+.ruff_cache/
+.pytype/
+dmypy.json
+pyrightconfig.json
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*.code-workspace
+
+# Vector database
+vectorstore/
+
+# Data (keep directory structure only)
+data/*.pdf
+data/*.PDF
+data/*.zip
+data/*.tar
+!data/.gitkeep
+
+# Logs
+logs/
+*.log
+
+# Experiments
+experiments/rag_eval_*/
+experiments/vectorstores/
+experiments/results/
+experiments/summaries/
+
+# Streamlit
+.streamlit/secrets.toml
+
+# Notebooks
+.ipynb_checkpoints/
+
+# OS
+.DS_Store
+Thumbs.db
+*:Zone.Identifier
+
+# Temporary/old files
+old__todos/
+*.sqlite3
+
+# Logs
+*.log
+
+*.txt
+
+# Caches & temp
+.cache/
+tmp/
+temp/
+*.tmp
+*.bak
+*.pid
+
+# Docs (exclude generated or local notes; keep structure if needed)
+docs/
+
+# Keep uv.lock tracked (do NOT ignore)
+windows-run.bat

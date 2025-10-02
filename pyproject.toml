@@ -1,0 +1,81 @@
+[project]
+name = "talk-with-pdfs"
+version = "0.2.0"
+description = "Modular RAG pipeline (LangChain + Chroma + Gemini) to chat with collections of scientific PDFs via CLI & Streamlit UI."
+readme = "README.md"
+# Relaxed to 3.10 to match execution environment (tests run under 3.10). Adjust back if deploying with newer runtime.
+requires-python = ">=3.10"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "License :: OSI Approved :: MIT License",
+    "Intended Audience :: Developers",
+    "Topic :: Scientific/Engineering :: Information Analysis",
+]
+dependencies = [
+    "langchain",
+    "langchain-community",
+    "langchain-google-genai",
+    "langchain-chroma",
+    "python-dotenv",
+    "pypdf",
+    "chromadb",
+    "streamlit",
+    "pydantic>=2",
+    "rank-bm25",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest",
+    "ruff>=0.5.0",
+    "mypy>=1.10.0",
+    "pre-commit>=3.7.0",
+    "python-dotenv",
+]
+
+[project.scripts]
+rag-pdf-chat = "app.interfaces.cli:main"
+rag-pdf-chat-ui = "app.interfaces.streamlit_app:main"
+
+[build-system]
+requires = ["setuptools", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+packages = ["app"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+select = [
+    "E",  # pycodestyle errors
+    "F",  # pyflakes
+    "I",  # isort
+    "B",  # flake8-bugbear
+    "UP", # pyupgrade
+]
+ignore = [
+    "E501",  # line length (handled by formatter if later added)
+]
+
+[tool.ruff.format]
+quote-style = "preserve"
+indent-style = "space"
+line-ending = "lf"
+
+[tool.ruff.isort]
+known-first-party = ["app"]
+
+[tool.mypy]
+python_version = "3.10"
+strict = false
+warn_unused_configs = true
+warn_return_any = true
+warn_unused_ignores = true
+show_error_codes = true
+exclude = [
+    "vectorstore/",
+]
