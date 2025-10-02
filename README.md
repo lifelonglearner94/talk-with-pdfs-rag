@@ -43,7 +43,3 @@ docker run -p 8501:8501 -v $(pwd)/data:/app/data -e GOOGLE_API_KEY=your_key talk
 
 - `GOOGLE_API_KEY`: Required for Google Gemini
 - `RAG_REMOVE_BIBLIOGRAPHY`: Enable/disable bibliography removal (default: `true`)
-
-## License
-
-MIT
