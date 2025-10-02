@@ -15,7 +15,7 @@ class RAGConfig(BaseModel):
     chunking_mode: Literal["basic", "structure"] = "structure"
     # Higher top_k for scientific queries (complex questions benefit from more context)
     top_k: int = 12
-    embedding_model: str = "models/text-embedding-004"
+    embedding_model: str = "gemini-embedding-001"
     llm_model: str = "gemini-2.5-flash"
     prompt_version: str = "v2"  # default uses präzisere Autor-Jahr Zitation
     # High-level retrieval mode orchestrating underlying strategy components
