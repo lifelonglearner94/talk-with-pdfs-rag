@@ -9,13 +9,13 @@ class RAGConfig(BaseModel):
     data_dir: Path = Path("data")
     persist_dir: Path = Path("vectorstore")
     # Optimal for scientific papers: larger chunks preserve context, moderate overlap ensures continuity
-    chunk_size: int = 1200  # Sweet spot for academic content with citations
-    chunk_overlap: int = 150  # ~12.5% overlap balances context without redundancy
+    chunk_size: int = 1400  # Sweet spot for academic content with citations
+    chunk_overlap: int = 190  # ~12.5% overlap balances context without redundancy
     # Chunking mode: 'structure' is better for scientific papers (respects sections, tables, figures)
     chunking_mode: Literal["basic", "structure"] = "structure"
     # Higher top_k for scientific queries (complex questions benefit from more context)
     top_k: int = 12
-    embedding_model: str = "gemini-embedding-001"
+    embedding_model: str = "models/gemini-embedding-001"
     llm_model: str = "gemini-2.5-flash"
     prompt_version: str = "v2"  # default uses präzisere Autor-Jahr Zitation
     # High-level retrieval mode orchestrating underlying strategy components
